@@ -16,5 +16,11 @@
     "title": "zapatillas jordan",
     "price": 500,
     "thumbnail": "zapatillas.img"
+  },
+  {
+    "id": 4,
+    "title": "Pantalon",
+    "price": "50",
+    "thumbnail": "pantalon.img"
   }
 ]

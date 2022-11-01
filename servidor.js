@@ -1,50 +1,94 @@
-const express = require('express')
-const app = express()
+const express = require('express');
+const { Router } = require('express');
+const Contenedor = require('./main');
 
-const PORT = 8080
+let container = new Contenedor('./productos.txt');
 
-const fs = require("fs");
+const app = express();
 
-const Contenedor = require("./main")
+const PORT = 8080;
 
-let contenedor = new Contenedor("productos.txt")
+app.use(express.json());
+app.use(express.urlencoded({extended: true}));
+app.use(express.static("public"));
 
-let productos
-metodos = async () => {
-    productos = await contenedor.getAll()
-}
-
-metodos();
+app.listen(PORT, () => {console.log(`Servidor http escuchando en el puerto ${PORT}`);})
 
 
-const server = app.listen(PORT, () => {
-    console.log(`Servidor http escuchando en el puerto ${server.address().port}`)
-})
-server.on("error", error => console.log(`Error en servidor ${error}`))
+const routerProducts = Router();
 
-app.get('/', (req, res) => {
-    res.send('<h1>Hola Mundo</h1>')
+routerProducts.get('/', async(req,res) => {
+    const products = await container.getAll()
+    res.json({
+        products
+    })
 })
 
-app.get('/productos', (req, res) => {
-    res.send(`<div>${productos.map(item =>
-        `<h2>
-                    ${item.id}
-                    ${item.title}
-                    ${item.price}
-                    ${item.thumbnail}
-                </h2>`
-    )
-        }</div>`)
+routerProducts.get('/:id', async(req,res) => {
+    const id = parseInt(req.params.id);
+    const item = await container.getById(id);
+
+    if(isNaN(id)){
+        res.json({
+            error: "El parametro ingresado no es un numero"
+        })
+    } else {
+        item == undefined ? res.json({error: "El id no existe"}) : res.json({item});
+    }
+
 })
 
-app.get('/productoRandom', (req, res) => {
-    const random = Math.round(Math.random() * (productos.length-1))
-    console.log(random)
-    res.send(`<h2>
-    ${productos[random].id}
-    ${productos[random].title}
-    ${productos[random].price}
-    ${productos[random].thumbnail}
-</h2>`)
+routerProducts.post('/', async(req,res) => {
+
+    let product = req.body;
+    await container.save(product)
+
+    res.json({
+        product
+    })
 })
+
+routerProducts.put('/:id', async(req,res) => {
+    
+    let { title, price, thumbnail } = req.body;
+
+    const id = parseInt(req.params.id);
+    let item = await container.getById(id);
+    item["title"] = title;
+    item["price"] = price;
+    item["thumbnail"] = thumbnail;
+
+    const newItem = {
+    "title" : title,
+    "price" : price,
+     "thumbnail" : thumbnail,
+     ...item
+    }
+
+    await container.deleteById(item.id);
+    await container.overwrite(newItem);
+    if(isNaN(id)){
+        res.json({
+            error: "El parametro ingresado no es un numero"
+        })
+    } else {
+        item == undefined ? res.json({error: "El id no existe"}) : res.json({newItem});
+    }
+
+})
+
+routerProducts.delete('/:id', async(req,res) => {
+    const id = parseInt(req.params.id);
+    const item = await container.deleteById(id);
+    if(isNaN(id)){
+        res.json({
+            error: "El parametro ingresado no es un numero"
+        })
+    } else {
+        item == undefined && res.json({msg: "El producto fue borrado exitosamente"});
+    }
+
+})
+
+
+app.use('/api/productos', routerProducts);
